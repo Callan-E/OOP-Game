@@ -1,0 +1,457 @@
+import random
+import time
+entities = []
+names = ["Paul","Tim","Bernard","Gerald","Benedict","Montgomery","Richard","Flynn","Winston","Russel","Herman","Nelson","Edwin","Albert"]
+symbols = ["#","?","^","+","=","&","%","$","£",">","<","!","/","|"]
+items = ["Sword","Hammer","Magnifying glass","Health potion"]
+
+class Hero:
+    def __init__(self,name,posx,posy,symbol):
+        entities.append(self)
+        self.name = name
+        self.posx = posx
+        self.posy = posy
+        self.heldx = None
+        self.heldy = None
+        self.symbol = symbol
+        self.health = 30
+        self.maxhealth = self.health
+        self.actions = 4
+        self.attackpower = 10
+        self.inventory = []
+
+    def __str__(self):
+        return f"{self.name} at {self.posx},{self.posy} with {self.health} health left"
+    
+    def viewinventory(self):
+        for item in self.inventory:
+            print(item)
+
+    def manualplace(self,newposx,newposy):
+        self.posx = newposx
+        self.posy = newposy
+
+    def randomplace(self,newposxrange,newposyrange):
+        self.posx = random.randint(newposxrange[0],newposxrange[1])
+        self.posy = random.randint(newposyrange[0],newposyrange[1])
+
+    def move(self,direction):
+        if direction.lower() in ["right","r"]:
+            self.posx += 1
+        elif direction.lower() in ["left","l"]:
+            self.posx -= 1
+        elif direction.lower() in ["up","u"]:
+            self.posy -= 1
+        elif direction.lower() in ["down","d"]:
+            self.posy += 1
+        
+
+class Map:
+    def __init__(self,sizex,sizey):
+        self.sizex = sizex
+        self.sizey = sizey
+        self.grid = [[" "for x in range(sizex)] for y in range(sizey)]
+
+    def __str__(self):
+        strgrid = ""
+        for i in range(self.sizey):
+            strgrid += str((self.grid[i]))
+            strgrid += "\n"
+        return strgrid
+    
+    def refresh(self,entities):
+        for instance in entities:
+            if instance.heldx != None:
+                self.grid[instance.heldy][instance.heldx] = " "
+            self.grid[instance.posy][instance.posx] = instance.symbol
+            instance.heldx = instance.posx
+            instance.heldy = instance.posy
+    
+    def gettile(self,posx,posy):
+        try:
+            return self.grid[posy][posx]
+        except:
+            return "BLOCKED"
+
+
+class Enemy:
+    def __init__(self,name,posx,posy,symbol,health,actions,attackpower):
+        entities.append(self)
+        self.name = name
+        self.posx = posx
+        self.posy = posy
+        self.heldx = None
+        self.heldy = None
+        self.symbol = symbol
+        self.health = health
+        self.actions = actions
+        self.attackpower = attackpower
+
+    def __str__(self):
+        return f"{self.name} at {self.posx},{self.posy} with {self.health} health left"
+    
+    def getstats(self):
+        return f"Name: {self.name}\nPosition: {self.posx},{self.posy}\nSymbol: {self.symbol}\nHealth: {self.health}\nActions: {self.actions}\nAttack power: {self.attackpower}\n"
+    
+    def manualplace(self,newposx,newposy):
+        self.posx = newposx
+        self.posy = newposy
+
+    def randomplace(self,newposxrange,newposyrange):
+        self.posx = random.randint(newposxrange[0],newposxrange[1])
+        self.posy = random.randint(newposyrange[0],newposyrange[1])
+
+    def chooseaction(self):
+        distancex = character.posx - self.posx
+        distancey = character.posy - self.posy
+        if abs(distancex) + abs(distancey) == 1:
+            self.attack()
+        else:
+            self.move()
+
+    def move(self):
+        distancex = character.posx - self.posx
+        distancey = character.posy - self.posy
+        preference = ["+h","+v","-h","-v"]
+        if distancex < 0:
+            preference[0] = "-h"
+            preference[2] = "+h"
+        if distancey > 0:
+            preference[1] = "-v"
+            preference[3] = "+v"
+        if distancey == 0:
+            preference[2],preference[3] = preference[3],preference[2]
+        distancex = abs(distancex)
+        distancey = abs(distancey)
+        direction = random.randint(1,distancex+distancey)
+        if direction > distancex:
+            preference[0],preference[1] = preference[1],preference[0]
+        for x in preference:
+            if x == "+h":
+                try:
+                    if area.gettile(self.posx+1,self.posy) == " ":
+                        self.posx += 1
+                        print("Moving right")
+                        break
+                except:
+                    break
+            elif x == "-h":
+                try:
+                    if area.gettile(self.posx-1,self.posy) == " ":
+                        self.posx -= 1
+                        print("Moving left")
+                        break
+                except:
+                    break
+            elif x == "+v":
+                try:
+                    if area.gettile(self.posx,self.posy-1) == " ":
+                        self.posy -= 1
+                        print("Moving up")
+                        break
+                except:
+                    break
+            elif x == "-v":
+                try:
+                    if area.gettile(self.posx,self.posy+1) == " ":
+                        self.posy += 1
+                        print("Moving down")
+                        break
+                except:
+                    break
+            else: print("Error, no move options")
+
+    def attack(self):
+        character.health -= self.attackpower
+        if character.health < 1:
+            character.health = 0
+        print(f"Attacking for {self.attackpower}!\n{character.name} has {character.health} left")
+        checkstatus(entities)
+
+
+class Portal:
+    def __init__(self,posx,posy):
+        self.posx = posx
+        self.posy = posy
+        self.heldx = None
+        self.hely = None
+        self.symbol = "O"
+        self.name = "Portal"
+        self.health = 10
+        entities.append(self)
+    
+    def hatch(self):
+        createenemy(random.randint(20,80),self.posx,self.posy)
+        entities.remove(self)
+
+def createportal():
+    posx = random.randint(0,area.sizex-1)
+    posy = random.randint(0,area.sizey-1)
+    while area.gettile(posx,posy) != " ":
+        posx = random.randint(0,area.sizex-1)
+        posy = random.randint(0,area.sizey-1)
+    Portal(posx,posy)
+    
+def checkstatus(entities):
+    over = False
+    for entity in entities:
+        try:
+            if entity.health < 1:
+                entity.health = 0
+                area.grid[entity.posy][entity.posx] = " "
+                entities.remove(entity)
+                print(f"{entity} is dead!")
+                if isinstance(entity,Hero):
+                    print(f"{entity.name.upper()} IS DEAD, GAME OVER")
+                    over = True
+                    entities.clear()
+        except:
+            pass
+    return over
+    
+
+class Item:
+    def __init__(self,name,symbol,posx,posy):
+        entities.append(self)
+        self.name = name
+        self.symbol = symbol
+        self.posx = posx
+        self.posy = posy
+        self.heldx = None
+        self.heldy = None
+        self.pickedupstatus = False
+    
+    def __str__(self):
+        return f"{self.name}"
+
+    def use(self,direction):
+        print(f"Used {self.name}")
+        items.append(self.name)
+        if self.name == "Sword":
+            if direction == "l":
+                symbol = area.gettile(character.posx-1,character.posy)
+            elif direction == "r":
+                symbol = area.gettile(character.posx+1,character.posy)
+            elif direction == "u":
+                symbol = area.gettile(character.posx,character.posy-1)
+            elif direction == "d":
+                symbol = area.gettile(character.posx,character.posy+1)
+            if symbol == " ":
+                print("You swung at an empty space")
+            elif symbol == "BLOCKED":
+                print("You can't swing there")
+            elif symbol == "Wall":
+                print("You hit a wall and did nothing")
+            else:
+                for entity in entities:
+                    if entity.symbol == symbol:
+                        entity.health -= character.attackpower
+                        checkstatus(entities)
+                        print(f"You hit {entity.name} for {character.attackpower}, leaving them with {entity.health} health!")      
+       
+        
+        elif self.name == "Hammer":
+            if direction == "l":
+                symbol = area.gettile(character.posx-1,character.posy)
+            elif direction == "r":
+                symbol = area.gettile(character.posx+1,character.posy)
+            elif direction == "u":
+                symbol = area.gettile(character.posx,character.posy-1)
+            elif direction == "d":
+                symbol = area.gettile(character.posx,character.posy+1)
+            if symbol == " ":
+                print("You swung at an empty space")
+            elif symbol == "BLOCKED":
+                print("You can't swing there")
+            elif symbol == "W":
+                print("Wall destroyed")
+                #Destroy wall, remove hammer
+            else:
+                for entity in entities:
+                    if entity.symbol == symbol:
+                        entity.health -= character.attackpower*0.5
+                        checkstatus(entities)
+                        print(f"You hit {entity.name} for {character.attackpower*0.5}, leaving them with {entity.health} health left!")
+        
+        elif self.name == "Magnifying glass":
+            if direction == "l":
+                symbol = area.gettile(character.posx-1,character.posy)
+            elif direction == "r":
+                symbol = area.gettile(character.posx+1,character.posy)
+            elif direction == "u":
+                symbol = area.gettile(character.posx,character.posy-1)
+            elif direction == "d":
+                symbol = area.gettile(character.posx,character.posy+1)
+            if symbol == " ":
+                print("There's nothing there")
+            elif symbol == "BLOCKED":
+                print("There's nothing there")
+            elif symbol == "W":
+                print("That's a wall")
+            else:
+                for entity in entities:
+                    if entity.symbol == symbol:
+                        print(f"You inspected an enemy!")
+                        print(entity.getstats())
+        
+        elif self.name == "Health potion":
+            if character.health + (character.maxhealth*0.5) <= character.maxhealth:
+                character.health += int((character.maxhealth*0.5))
+                print(f"You healed for {character.maxhealth*0.5} health up to {character.health}!")
+            else:
+                print(f"You healed for {character.maxhealth - character.health} up to max ({character.maxhealth}) health!")
+                character.health = int(character.maxhealth*0.5)
+            #remove from inventory
+        time.sleep(1)
+        
+    def pickedup(self):
+        self.pickedupstatus = True
+        character.inventory.append(self)
+        entities.remove(self)
+        
+    
+
+        #items spawned randomly by maker?
+        #method for pickup?
+
+
+def createenemy(value,posx,posy):
+    if posx == None and posy == None:
+        posx = random.randint(0,area.sizex-1)
+        posy = random.randint(0,area.sizey-1)
+        while area.gettile(posx,posy) != " ":
+            posx = random.randint(0,area.sizex-1)
+            posy = random.randint(0,area.sizey-1)
+    name = random.choice(names)
+    symbol = random.choice(symbols)
+    valpref = [random.randint(1,100),random.randint(1,100),random.randint(1,100)]
+    valchoice = None
+    health = 5
+    attack = 2
+    action = 1
+    while value > 0:
+        valnum = random.randint(3,valpref[0]+valpref[1]+valpref[2])
+        if valnum <= valpref[0]:
+            valchoice = 0
+        if valnum > valpref[0] and valnum < (valpref[0] + valpref[1]):
+            valchoice = 1
+        if valnum > (valpref[1]+valpref[0]):
+            valchoice = 2
+        if valchoice == 0:
+            health += 5
+            value -= 10
+        elif valchoice == 1:
+            attack += 2
+            value -= 10
+        elif valchoice == 2 and value >= 20:
+            action += 1
+            value -= 20
+    Enemy(name,posx,posy,symbol,health,action,attack)
+    names.remove(name)
+    symbols.remove(symbol)
+
+def createcharacter(name,symbol):
+    posx = random.randint(0,area.sizex-1)
+    posy = random.randint(0,area.sizey-1)
+    while area.gettile(posx,posy) != " ":
+        posx = random.randint(0,area.sizex-1)
+        posy = random.randint(0,area.sizey-1)
+    return Hero(name,posx,posy,symbol)
+
+def createitem():
+    posx = random.randint(0,area.sizex-1)
+    posy = random.randint(0,area.sizey-1)
+    while area.gettile(posx,posy) != " ":
+        posx = random.randint(0,area.sizex-1)
+        posy = random.randint(0,area.sizey-1)
+    itemchoice = random.choice(items)
+    items.remove(itemchoice) #remove item til used
+    return Item(random.choice(items),"*",posx,posy)
+    
+def makermove():
+    move = random.randint(1,2)
+    if move == 1:
+        createportal()
+        print(f"Maker created a portal for an enemy at O!")
+    if move == 2:
+        if len(items) != 0:
+            print(len(items))
+            createitem()
+            print(f"Maker spawned in an item!")
+        else:
+            print(f"Maker tried to spawn in an item, but there were none left!")
+        
+
+    
+
+
+    #health,attack,action
+    
+    #value randomly split between health, attack and actions
+        # 5 hp = 10 value
+        # 2 attack = 10 value
+        # 1 action = 20 value
+    #no variable assigned to enemy, just put straight into entities
+    #warning given one turn before that an enemy will spawn in certain location - portal class?
+    #"maker" has a turn where they can spawn portals for an enemy or make walls etc
+
+area = Map(7,9)
+character = createcharacter("John","@")
+createenemy(80,None,None)
+createenemy(40,None,None)
+while True:
+    for entity in entities:
+        if isinstance(entity,Item):
+            break #breaks for loop and not while loop hopefully
+        print(f"{entity.name.upper()}'s ({entity.symbol}) TURN")
+        if isinstance(entity,Hero):
+            for move in range(entity.actions):
+                time.sleep(1)
+                area.refresh(entities)
+                print(area)
+                for item in character.inventory:
+                    print(item)
+                movechoice = "Magnifying glass" #to enter loop
+                while movechoice == "Magnifying glass":
+                    movechoice = input("Move: ")
+                    if movechoice.lower() == "use item":
+                        for item in range(len(character.inventory)):
+                            print(f"{item}: {character.inventory[item]}")
+                        itemchoice = int(input("What item? "))
+                        direction = input("In what direction? ")
+                        character.inventory[itemchoice].use(direction)
+                        if character.inventory[itemchoice] == "Magnifying glass":
+                            movechoice = input("The magnifying glass does not take an action, you may move again")
+                    entity.move(movechoice)
+                    if area.gettile(entity.posx,entity.posy) == "*":
+                        for ent in entities:
+                            if ent.posx == character.posx and ent.posy == character.posy and ent != character:
+                                ent.pickedup()
+        elif isinstance(entity,Portal):
+            entity.hatch()
+        else:
+            for move in range(entity.actions):
+                area.refresh(entities)
+                print(area)
+                entity.chooseaction()
+                time.sleep(2)
+        area.refresh(entities)
+        print(area)
+    print("MAKER'S TURN")
+    time.sleep(2)
+    makermove()
+    area.refresh(entities)
+    print(area)
+
+
+
+# speed/strength boost?
+# goal?
+# validation
+# maker still needs to be able to place walls
+# tkinter grid system -> when clicking on enemy give stats if have magnifying glass?
+# hammer can attack enemies but less damage than sword, used up when breaking a wall
+
+#bugs: magnifying glass taking a turn
+#player can still walk whereever
+#duplicates of items spawning -> when used an item can be spawned in again but is not removed from inventory
